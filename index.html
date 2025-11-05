@@ -185,6 +185,7 @@
             }
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <h1>Spanish Bingo</h1>
@@ -203,6 +204,7 @@
             <button class="range-button" onclick="changeRange(30)">0-30</button>
             <button class="range-button active" onclick="changeRange(100)">0-100</button>
             <button class="reset-button" onclick="resetBoard()">Reset Board</button>
+            <button class="reset-button" onclick="generateBingoCardsPDF()">Generate PDF Cards</button>
         </div>
     </div>
 
@@ -388,6 +390,96 @@
 
         // Initialize on page load
         initializeGrid(currentRange);
+
+        // Generate a single randomized 5x5 Bingo card
+        function generateBingoCard() {
+            const card = [];
+            const availableNumbers = [];
+
+            // Get all available numbers in current range
+            for (let i = 0; i <= currentRange; i++) {
+                availableNumbers.push(i);
+            }
+
+            // Create 5x5 grid
+            for (let row = 0; row < 5; row++) {
+                card[row] = [];
+                for (let col = 0; col < 5; col++) {
+                    // Center cell (2,2) is "¡BINGO!"
+                    if (row === 2 && col === 2) {
+                        card[row][col] = '¡BINGO!';
+                    } else {
+                        // Select random number
+                        const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+                        card[row][col] = availableNumbers[randomIndex];
+
+                        // If we have more than 24 numbers, remove to avoid duplicates
+                        // Otherwise, keep it (allowing repeats for small ranges)
+                        if (availableNumbers.length > 24) {
+                            availableNumbers.splice(randomIndex, 1);
+                        }
+                    }
+                }
+            }
+
+            return card;
+        }
+
+        // Generate PDF with 25 Bingo cards (1 per page)
+        function generateBingoCardsPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+
+            for (let cardNum = 0; cardNum < 25; cardNum++) {
+                // Add new page for each card (except the first one)
+                if (cardNum > 0) {
+                    pdf.addPage();
+                }
+
+                const card = generateBingoCard();
+
+                // Title - Super big and bubbly
+                pdf.setFontSize(48);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('BINGO', 105, 30, { align: 'center' });
+
+                // Card number - bigger
+                pdf.setFontSize(18);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(`Card ${cardNum + 1}`, 105, 42, { align: 'center' });
+
+                // Draw the 5x5 grid - much bigger cells
+                const startX = 25;
+                const startY = 55;
+                const cellSize = 32;
+
+                for (let row = 0; row < 5; row++) {
+                    for (let col = 0; col < 5; col++) {
+                        const x = startX + col * cellSize;
+                        const y = startY + row * cellSize;
+
+                        // Draw cell border with thicker lines
+                        pdf.setLineWidth(0.8);
+                        pdf.rect(x, y, cellSize, cellSize);
+
+                        // Draw cell content - MUCH bigger and bubbly
+                        const cellValue = card[row][col];
+                        if (cellValue === '¡BINGO!') {
+                            pdf.setFontSize(14);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text('¡BINGO!', x + cellSize / 2, y + cellSize / 2 + 4, { align: 'center' });
+                        } else {
+                            pdf.setFontSize(26);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.text(String(cellValue), x + cellSize / 2, y + cellSize / 2 + 6, { align: 'center' });
+                        }
+                    }
+                }
+            }
+
+            // Save the PDF
+            pdf.save('spanish-bingo-cards.pdf');
+        }
     </script>
 </body>
 </html>
